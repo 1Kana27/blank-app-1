@@ -84,36 +84,18 @@ if "records" not in st.session_state:
     st.session_state.records = []
 
 # =========================================
-# ④ 入力フォーム（連動が正しく動く版）
+# ④ 入力エリア（フォームをやめてシンプルに）
 # =========================================
 st.sidebar.header("📥 学習記録の入力")
 
-with st.sidebar.form("input_form"):
-    grade = st.selectbox(
-        "学年",
-        list(UNIT_LIST.keys()),
-        key="grade_select"
-    )
+grade = st.sidebar.selectbox("学年", list(UNIT_LIST.keys()))
+subject = st.sidebar.selectbox("教科", list(UNIT_LIST[grade].keys()))
+unit = st.sidebar.selectbox("単元", UNIT_LIST[grade][subject])
 
-    subject = st.selectbox(
-        "教科",
-        list(UNIT_LIST[grade].keys()),
-        key="subject_select"
-    )
+score = st.sidebar.number_input("テスト点数", 0, 100, 80)
+test_date = st.sidebar.date_input("実施日", value=date.today())
 
-    # 学年＋教科ごとに key を変えることで単元が正しく更新される
-    unit = st.selectbox(
-        "単元",
-        UNIT_LIST[grade][subject],
-        key=f"unit_select_{grade}_{subject}"
-    )
-
-    score = st.number_input("テスト点数", 0, 100, 80)
-    test_date = st.date_input("実施日", value=date.today())
-
-    submitted = st.form_submit_button("記録する")
-
-if submitted:
+if st.sidebar.button("記録する"):
     st.session_state.records.append(
         {
             "date": test_date,
@@ -131,7 +113,7 @@ if submitted:
 df = pd.DataFrame(st.session_state.records)
 
 if df.empty:
-    st.info("まだデータがありません。左のフォームから記録を追加してください。")
+    st.info("まだデータがありません。左の入力欄から記録を追加してください。")
     st.stop()
 
 st.subheader("📄 学習履歴")
