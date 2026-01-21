@@ -1,11 +1,11 @@
-
 import streamlit as st
 import pandas as pd
 import altair as alt
+import plotly.graph_objects as go
 from datetime import date
 
 st.set_page_config(page_title="学習支援アプリ", layout="wide")
-st.title("📘 学習支援アプリ（5教科＋関連単元の復習提案）")
+st.title("📘 学習支援アプリ（5教科＋関連単元＋得意/苦手可視化）")
 
 # =========================================
 # ① 学年 × 教科 × 単元データ
@@ -86,14 +86,29 @@ if "records" not in st.session_state:
     st.session_state.records = []
 
 # =========================================
-# ④ 入力フォーム
+# ④ 入力フォーム（連動が正しく動く版）
 # =========================================
 st.sidebar.header("📥 学習記録の入力")
 
 with st.sidebar.form("input_form"):
-    grade = st.selectbox("学年", list(UNIT_LIST.keys()))
-    subject = st.selectbox("教科", list(UNIT_LIST[grade].keys()))
-    unit = st.selectbox("単元", UNIT_LIST[grade][subject])
+    grade = st.selectbox(
+        "学年",
+        list(UNIT_LIST.keys()),
+        key="grade_select"
+    )
+
+    subject = st.selectbox(
+        "教科",
+        list(UNIT_LIST[grade].keys()),
+        key="subject_select"
+    )
+
+    # 学年＋教科ごとに key を変えることで単元が正しく更新される
+    unit = st.selectbox(
+        "単元",
+        UNIT_LIST[grade][subject],
+        key=f"unit_select_{grade}_{subject}"
+    )
 
     score = st.number_input("テスト点数", 0, 100, 80)
     test_date = st.date_input("実施日", value=date.today())
@@ -147,18 +162,16 @@ with col1:
     else:
         st.error("苦手の可能性あり。復習を優先しましょう。")
 
-    # 関連単元の提案
     st.markdown("### 🔗 関連単元の復習提案")
     if latest["unit"] in RELATED_UNITS:
-        related = RELATED_UNITS[latest["unit"]]
         st.write("この単元が苦手な場合、次の単元を復習すると効果的です：")
-        for r in related:
+        for r in RELATED_UNITS[latest["unit"]]:
             st.write(f"- {r}")
     else:
         st.write("関連単元データはありません。")
 
 # =========================================
-# ⑦ 可視化
+# ⑦ 可視化（平均点・時系列）
 # =========================================
 with col2:
     st.subheader("📊 学習状況の可視化")
@@ -226,7 +239,51 @@ with col2:
         st.altair_chart(line_chart, use_container_width=True)
 
 # =========================================
-# ⑧ 苦手単元リスト
+# ⑧ 得意・苦手の可視化（レーダーチャート）
+# =========================================
+st.subheader("🌟 得意・苦手の可視化（レーダーチャート）")
+
+subject_avg = (
+    df.groupby("subject")["score"]
+    .mean()
+    .reset_index()
+    .rename(columns={"score": "avg_score"})
+)
+
+if not subject_avg.empty:
+    categories = subject_avg["subject"].tolist()
+    values = subject_avg["avg_score"].tolist()
+
+    values += values[:1]
+    categories += categories[:1]
+
+    fig = go.Figure(
+        data=[
+            go.Scatterpolar(
+                r=values,
+                theta=categories,
+                fill="toself",
+                name="平均点",
+                line=dict(color="royalblue")
+            )
+        ]
+    )
+
+    fig.update_layout(
+        polar=dict(
+            radialaxis=dict(
+                visible=True,
+                range=[0, 100]
+            )
+        ),
+        showlegend=False,
+        height=500
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+# =========================================
+# ⑨ 苦手単元リスト
 # =========================================
 st.subheader("🧩 苦手単元のリストアップ")
 
