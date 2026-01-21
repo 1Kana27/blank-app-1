@@ -101,6 +101,7 @@ with st.sidebar.form("input_form"):
         key="subject_select"
     )
 
+    # 学年＋教科ごとに key を変えることで単元が正しく更新される
     unit = st.selectbox(
         "単元",
         UNIT_LIST[grade][subject],
