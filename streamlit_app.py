@@ -1,6 +1,12 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
+from supabase import create_client, Client
+
+
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="学習支援アプリ", layout="wide")
 st.title("📘 学習支援アプリ（5教科＋関連単元の復習提案）")
@@ -77,6 +83,8 @@ RELATED_UNITS = {
     "政治": ["社会の仕組み"],
 }
 
+def save_record_to_supabase(record: dict):
+    supabase.table("usage_logs").insert(record).execute()
 # =========================================
 # ③ データ保存
 # =========================================
@@ -96,16 +104,21 @@ score = st.sidebar.number_input("テスト点数", 0, 100, 80)
 test_date = st.sidebar.date_input("実施日", value=date.today())
 
 if st.sidebar.button("記録する"):
-    st.session_state.records.append(
-        {
-            "date": test_date,
-            "grade": grade,
-            "subject": subject,
-            "unit": unit,
-            "score": score,
-        }
-    )
-    st.sidebar.success("記録しました！")
+    record = {
+        "date": str(test_date),   # Supabase は date を文字列で受け取る
+        "grade": grade,
+        "subject": subject,
+        "unit": unit,
+        "score": score,
+    }
+
+    # ローカル（session_state）にも保存
+    st.session_state.records.append(record)
+
+    # Supabase にも保存
+    save_record_to_supabase(record)
+
+    st.sidebar.success("記録しました！（Supabase に保存済）")
 
 # =========================================
 # ⑤ データ表示
